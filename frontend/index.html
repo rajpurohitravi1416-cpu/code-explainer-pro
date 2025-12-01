@@ -1,0 +1,774 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Code Explainer Pro — Glass Hero (Fixed)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0a1623">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Inter:wght@300;400;600;700&family=Fira+Code&display=swap" rel="stylesheet">
+  <style>
+    /* -------------------------
+       Base + palette
+       ------------------------- */
+    :root{
+      --accent1:#22e3b3; /* mint */
+      --accent2:#4b6cff; /* indigo */
+      --bg-0:#080a10;
+      --bg-1:#0b1220;
+      --glass-alpha: 0.06;
+      --card-radius:16px;
+      --glass-blur: 14px;
+      --muted: rgba(220,230,255,0.76);
+      --mono: 'Fira Code', monospace;
+      --ui: 'Poppins', system-ui, sans-serif;
+    }
+
+    html,body{height:100%;margin:0;font-family:var(--ui);-webkit-font-smoothing:antialiased;background:linear-gradient(135deg,var(--bg-0),var(--bg-1));color:#eaf6ff;overflow-y:auto}
+    .app-root{max-width:1200px;margin:28px auto;padding:22px;position:relative;z-index:5;box-sizing:border-box}
+
+    /* -------------------------
+       Hero background shapes
+       ------------------------- */
+    .hero-bg { pointer-events: none; position:fixed; inset:0; z-index:0; overflow:hidden; }
+
+    .glass-lens {
+      position: absolute;
+      right: 8%;
+      top: 6%;
+      width: 560px;
+      height: 560px;
+      border-radius: 50%;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border: 1px solid rgba(255,255,255,0.06);
+      box-shadow: 0 40px 120px rgba(10,12,25,0.7), inset 0 8px 24px rgba(255,255,255,0.02);
+      backdrop-filter: blur(24px) saturate(140%);
+      -webkit-backdrop-filter: blur(24px) saturate(140%);
+      display:grid; place-items:center; overflow:hidden; opacity:0.98;
+    }
+    .glass-lens::before{
+      content:"";
+      position:absolute;inset:0;border-radius:50%;
+      background: radial-gradient(circle at 25% 22%, rgba(255,255,255,0.06), transparent 12%),
+                  radial-gradient(circle at 80% 70%, rgba(75,108,255,0.06), transparent 20%);
+      mix-blend-mode:overlay; pointer-events:none;
+    }
+    .glass-lens::after{
+      content:"";
+      position:absolute;left:6px;top:6px;right:6px;bottom:6px;border-radius:50%;
+      box-shadow: inset 0 2px 0 rgba(255,255,255,0.06), inset 0 -6px 40px rgba(0,0,0,0.35);
+      pointer-events:none;
+    }
+
+    .blob { position:absolute; filter: blur(64px) saturate(140%); opacity:0.95; transform: translateZ(0); }
+    .blob.mint { width:420px;height:420px;background:radial-gradient(circle at 30% 30%, rgba(34,227,179,0.95), rgba(34,227,179,0.18) 35%, transparent 60%); left:6%; top:18%; mix-blend-mode:screen; }
+    .blob.indigo { width:520px;height:520px;background:radial-gradient(circle at 70% 60%, rgba(75,108,255,0.95), rgba(75,108,255,0.12) 30%, transparent 60%); right:12%; top:36%; mix-blend-mode:screen; }
+
+    .lens-clouds { position:absolute; inset:0; border-radius:50%; background-image: radial-gradient(closest-side, rgba(255,255,255,0.02), transparent 45%); mix-blend-mode:overlay; opacity:0.9; animation: floatClouds 22s linear infinite; }
+    @keyframes floatClouds { 0%{ transform: translateY(0) translateX(0) scale(1); } 50%{ transform: translateY(-12px) translateX(8px) scale(1.02); } 100%{ transform: translateY(0) translateX(0) scale(1); } }
+
+    .diagonals { position:absolute; left:-6%; top:12%; width:62%; height:86%; transform: skewY(-6deg); pointer-events:none; display:block; }
+    .diagonals svg { width:100%; height:100%; opacity:0.18; mix-blend-mode:screen; filter: blur(8px); }
+
+    .dot-grid { position:absolute; right:2%; top:10%; width:220px; height:220px; background: radial-gradient(rgba(255,255,255,0.02) 1px, transparent 1px); background-size:12px 12px; opacity:0.06; transform: rotate(18deg); }
+
+    .app-root { position:relative; z-index:5; }
+
+    /* -------------------------
+       App UI (cards/buttons)
+       ------------------------- */
+
+    header { display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom:18px; }
+    .brand { display:flex; gap:12px; align-items:center; }
+    .logo { width:56px;height:56;border-radius:14px;display:grid;place-items:center;color:white;font-weight:700;background:linear-gradient(135deg,var(--accent1),var(--accent2)); box-shadow:0 12px 36px rgba(75,108,255,0.12); font-family:var(--mono) }
+
+    .layout { display:grid; grid-template-columns:300px 1fr; gap:18px; align-items:start; }
+    @media (max-width:980px) { .layout{grid-template-columns:1fr} }
+
+    .card { background: rgba(255,255,255,var(--glass-alpha)); border:1px solid rgba(255,255,255,0.06); border-radius:var(--card-radius); padding:16px; backdrop-filter: blur(var(--glass-blur)) saturate(120%); -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(120%); box-shadow: 0 20px 60px rgba(2,6,12,0.6); color: #eaf6ff; }
+    .nav-title{ font-weight:700;color:var(--muted); margin-bottom:12px }
+
+    .feature-pill { display:flex; gap:12px; align-items:center; padding:12px; border-radius:12px; cursor:pointer; background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent); border:1px solid rgba(255,255,255,0.03); transition: all .12s ease; }
+    .feature-pill .icon { width:38px;height:38;border-radius:9px;display:grid;place-items:center;color:#fff;background:linear-gradient(90deg,var(--accent1),var(--accent2)); font-weight:700 }
+    .feature-pill.active { background: linear-gradient(135deg, rgba(75,108,255,0.06), rgba(34,227,179,0.03)); border:1px solid rgba(75,108,255,0.12); color:#eaf6ff }
+
+    h3{margin:0 0 6px 0}
+    .hint{ color:var(--muted); font-size:13px }
+
+    textarea#code { width:100%; min-height:260px; padding:14px; border-radius:12px; border:1px dashed rgba(255,255,255,0.04); background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)); color:#e6eef6; font-family:var(--mono); font-size:13px; resize:vertical; }
+    textarea::placeholder{ color:#c6d3dc; opacity:0.5 }
+
+    .controls{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:12px }
+    .btn { cursor:pointer; border-radius:10px; padding:10px 14px; font-weight:600; transition: transform .12s, box-shadow .12s; border:1px solid transparent }
+    .btn-primary { background: linear-gradient(90deg,var(--accent1),var(--accent2)); color:#04111a; box-shadow: 0 12px 36px rgba(75,108,255,0.10); }
+    .btn-ghost { background: transparent; color: var(--muted); border:1px solid rgba(255,255,255,0.04); padding:10px 12px; border-radius:10px }
+    .btn-accent { background: linear-gradient(90deg, rgba(34,227,179,0.12), rgba(75,108,255,0.08)); color: #eaf6ff; border:1px solid rgba(255,255,255,0.04) }
+    .small-btn { padding:8px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.03);color:var(--muted); }
+
+    .spacer{flex:1}
+
+    /* -------------------------
+       Output & Line-by-Line (fixed)
+       - Use fixed max-height + internal scroll so card never expands
+       ------------------------- */
+
+    /* Output wrapper — clamp and scroll internally */
+    #outputPre {
+      display: block;
+      box-sizing: border-box;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow: auto;
+      max-height: 360px; /* adjust as needed */
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.018), transparent);
+      border: 1px solid rgba(255,255,255,0.02);
+      font-family: var(--mono);
+      font-size: 13px;
+      color: #eaf6ff;
+    }
+
+    /* Ensure inner code doesn't expand parent */
+    #output {
+      display: block;
+      white-space: pre-wrap;
+      word-break: break-word;
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    .lines-list {
+      max-height: 260px;
+      overflow: auto;
+      box-sizing: border-box;
+      padding: 8px;
+      border-radius: 10px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.012), transparent);
+      border: 1px solid rgba(255,255,255,0.02);
+      font-family: var(--mono);
+      font-size: 13px;
+      color: #eaf6ff;
+    }
+
+    .line-explanation {
+      max-height: 260px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      box-sizing: border-box;
+      padding: 10px;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--muted);
+    }
+
+    footer{ text-align:center; opacity:0.7; margin-top:16px; color:var(--muted); font-size:13px }
+
+    @media (max-width:720px){
+      .glass-lens{ width:360px;height:360px; right:-6%; top:-6%; opacity:0.88 }
+      .blob.mint{ display:none }
+      .blob.indigo{ display:none }
+      .diagonals{ display:none }
+    }
+  </style>
+</head>
+<body>
+  <!-- Decorative hero shapes (background) -->
+  <div class="hero-bg" aria-hidden="true">
+    <div class="diagonals" role="presentation">
+      <svg viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g1" x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0" stop-color="#4b6cff" stop-opacity="0.85"/>
+            <stop offset="1" stop-color="#22e3b3" stop-opacity="0.75"/>
+          </linearGradient>
+          <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="18" result="b"/></filter>
+        </defs>
+        <g filter="url(#soft)">
+          <rect x="40" y="20" rx="28" ry="28" width="980" height="64" fill="url(#g1)" opacity="0.26"></rect>
+          <rect x="12" y="110" rx="28" ry="28" width="820" height="64" fill="url(#g1)" opacity="0.22"></rect>
+          <rect x="80" y="200" rx="28" ry="28" width="760" height="64" fill="url(#g1)" opacity="0.18"></rect>
+          <rect x="50" y="280" rx="28" ry="28" width="700" height="64" fill="url(#g1)" opacity="0.14"></rect>
+          <rect x="34" y="370" rx="28" ry="28" width="640" height="64" fill="url(#g1)" opacity="0.10"></rect>
+        </g>
+      </svg>
+    </div>
+
+    <div class="blob mint" aria-hidden="true"></div>
+    <div class="blob indigo" aria-hidden="true"></div>
+
+    <div class="glass-lens" style="right:6%;top:6%;" aria-hidden="true">
+      <div class="lens-clouds"></div>
+      <div style="width:86%;height:86%;border-radius:50%;border:1px solid rgba(255,255,255,0.02);box-shadow: inset 0 10px 30px rgba(255,255,255,0.02);"></div>
+    </div>
+
+    <div class="dot-grid" aria-hidden="true"></div>
+  </div>
+
+  <!-- App content -->
+  <div class="app-root">
+    <div class="app-root-inner app-root">
+      <header>
+        <div class="brand">
+          <div class="logo">CE</div>
+          <div>
+            <h1>⚡ Code Explainer Pro</h1>
+            <div class="hint" style="margin-top:2px">Where your code becomes clarity.</div>
+          </div>
+        </div>
+        <div>
+          <button id="logoutBtn" class="btn btn-ghost" title="Logout">Logout</button>
+        </div>
+      </header>
+
+      <div class="layout">
+        <!-- Sidebar -->
+        <aside class="card" aria-label="Sidebar">
+          <div class="nav-title">Tools</div>
+
+          <div id="featureSegment" class="feature-segment" role="tablist" aria-label="Tool selection">
+            <div class="feature-pill" data-feature="explainer" role="tab" tabindex="0" onclick="selectFeature('explainer')">
+              <div class="icon">E</div>
+              <div><div class="title">Explainer</div><div class="desc">Explain, debug, add comments</div></div>
+            </div>
+
+            <div class="feature-pill" data-feature="converter" role="tab" tabindex="0" onclick="selectFeature('converter')">
+              <div class="icon">C</div>
+              <div><div class="title">Converter</div><div class="desc">Language → Language</div></div>
+            </div>
+
+            <div class="feature-pill" data-feature="optimizer" role="tab" tabindex="0" onclick="selectFeature('optimizer')">
+              <div class="icon">O</div>
+              <div><div class="title">Optimizer</div><div class="desc">Speed / memory / readability</div></div>
+            </div>
+
+            <div class="feature-pill" data-feature="prompt-to-code" role="tab" tabindex="0" onclick="selectFeature('prompt-to-code')">
+              <div class="icon">P</div>
+              <div><div class="title">Prompt → Code</div><div class="desc">Natural language → code</div></div>
+            </div>
+
+            <div class="feature-pill" data-feature="half-fill" role="tab" tabindex="0" onclick="selectFeature('half-fill')">
+              <div class="icon">F</div>
+              <div><div class="title">Half-fill</div><div class="desc">Complete partial code</div></div>
+            </div>
+          </div>
+
+          <div class="sidebar-actions" style="margin-top:14px">
+            <button class="small-btn" onclick="saveLocal()">💾 Save Locally</button>
+            <button class="small-btn" onclick="loadHistory()">📜 Load History</button>
+            <button class="small-btn" onclick="deleteHistory()">🗑️ Delete All</button>
+          </div>
+        </aside>
+
+        <!-- Main -->
+        <main>
+          <section class="card" aria-labelledby="enter-title">
+            <h3 id="enter-title">💻 Enter Your Code</h3>
+            <div id="inputHint" class="hint">Paste your code here ...</div>
+
+            <div style="margin-top:10px">
+              <textarea id="code" placeholder="Paste your code here..." spellcheck="false" rows="12" aria-label="Code or prompt input"></textarea>
+            </div>
+
+            <div class="controls" id="controlsArea">
+              <div id="pairLanguageWrap" class="select-pair" style="display:none">
+                <div>
+                  <label style="font-size:13px;color:var(--muted)">From</label><br>
+                  <select id="languageFrom">
+                    <option>Python</option><option>JavaScript</option><option>TypeScript</option><option>HTML</option>
+                    <option>Java</option><option>C</option><option>C++</option><option>C#</option><option>Go</option>
+                    <option>Kotlin</option><option>Swift</option><option>PHP</option><option>SQL</option>
+                    <option>Rust</option><option>Ruby</option><option>Dart</option>
+                  </select>
+                </div>
+                <div>
+                  <label style="font-size:13px;color:var(--muted)">To</label><br>
+                  <select id="languageTo">
+                    <option>JavaScript</option><option>Python</option><option>TypeScript</option><option>HTML</option>
+                    <option>Java</option><option>C</option><option>C++</option><option>C#</option><option>Go</option>
+                    <option>Kotlin</option><option>Swift</option><option>PHP</option><option>SQL</option>
+                    <option>Rust</option><option>Ruby</option><option>Dart</option>
+                  </select>
+                </div>
+              </div>
+
+              <div id="explainModesWrap" class="select-pair" style="gap:8px">
+                <button class="btn btn-accent explain-mode-pill" data-mode="explain" onclick="setExplainMode('explain')">Explain</button>
+                <button class="btn btn-ghost explain-mode-pill" data-mode="debug" onclick="setExplainMode('debug')">Debug</button>
+                <button class="btn btn-ghost explain-mode-pill" data-mode="comment" onclick="setExplainMode('comment')">Add Comments</button>
+              </div>
+
+              <button id="primaryAction" class="btn btn-primary" onclick="primaryActionClicked()">Explain Code</button>
+
+              <label for="codeImage" id="fileLabel" class="btn btn-ghost" style="display:inline-flex;align-items:center;cursor:pointer">📂 Choose File</label>
+              <input type="file" id="codeImage" accept="image/*" style="display:none" />
+
+              <button id="imageActionBtn" class="btn btn-ghost" onclick="imageAction()">📸 Explain Image</button>
+
+              <div class="spacer"></div>
+              <div id="featureHint" class="hint">Use automatic detection for language.</div>
+            </div>
+
+            <!-- OUTPUT: full-width card -->
+            <div style="margin-top:14px;">
+              <div class="card" style="padding:14px;">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <h4 style="margin:0">🧠 Output</h4>
+                  <div>
+                    <button id="clearExplanationBtn" class="small-btn" onclick="removeExplanation()">🗑️ Clear</button>
+                  </div>
+                </div>
+                <div style="margin-top:12px">
+                  <pre id="outputPre" class="output"><code id="output">Your explanation will appear here...</code></pre>
+                </div>
+              </div>
+            </div>
+
+            <!-- LINE-BY-LINE: now below the output as its own card -->
+            <div style="margin-top:16px;">
+              <div class="card" style="padding:14px;">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <h4 style="margin:0">🔍 Line-by-Line</h4>
+                </div>
+                <div style="margin-top:12px">
+                  <div id="linesList" class="lines-list"></div>
+                </div>
+                <div style="margin-top:12px">
+                  <pre id="lineExplanation" class="line-explanation">Click a line to see explanation...</pre>
+                </div>
+              </div>
+            </div>
+
+          </section>
+
+          <section class="card" style="margin-top:18px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <h3 style="margin:0">📚 My History</h3>
+              <button class="small-btn" onclick="deleteHistory()">🗑️ Delete All</button>
+            </div>
+            <div id="historyList" style="margin-top:12px"></div>
+          </section>
+        </main>
+      </div>
+
+      <footer>Made with ❤️ by R4V || Code Explainer Pro</footer>
+    </div>
+  </div>
+
+  <script>
+    /* -------------------------
+       Detection + helpers (same as before)
+       ------------------------- */
+    function detectLanguageFromCode(code) {
+      if (!code || !code.trim()) return 'unknown';
+      const c = code.trim();
+      const htmlRe = /<!doctype html>|<html[\s>]|<body[\s>]|<script[\s>]|<div[\s>]/i;
+      if (htmlRe.test(c)) return 'HTML';
+      const sqlRe = /\bSELECT\b.*\bFROM\b|\bINSERT\s+INTO\b|\bCREATE\s+TABLE\b/i;
+      if (sqlRe.test(c)) return 'SQL';
+      const pyRe = /(^\s*def\s+\w+\s*\(|^\s*class\s+\w+\s*:|^\s*import\s+\w+|\bprint\(|\bself\b)/m;
+      if (pyRe.test(c)) return 'Python';
+      const jsRe = /\b(function\s*\w*\s*\()|\bconsole\.log\b|=>|\bconst\b|\blet\b|\bvar\b/;
+      if (jsRe.test(c)) return 'JavaScript';
+      const javaRe = /\bpublic\s+class\b|\bSystem\.out\.println\b/;
+      if (javaRe.test(c)) return 'Java';
+      const cppRe = /#include\s*<|std::|int\s+main\s*\(|printf\(|scanf\(/;
+      if (cppRe.test(c)) return 'C++';
+      return 'unknown';
+    }
+
+    function detectionToSelectValue(detected) {
+      if (!detected) return null;
+      const map = { 'HTML':'HTML', 'Python':'Python', 'JavaScript':'JavaScript', 'Java':'Java', 'SQL':'SQL', 'C++':'C++' };
+      return map[detected] || null;
+    }
+
+    function getSelectedLanguage(activeFeature = null) {
+      const feature = activeFeature || localStorage.getItem('cep_last_feature') || 'explainer';
+      if (feature === 'converter') {
+        const fromEl = document.getElementById('languageFrom');
+        const toEl = document.getElementById('languageTo');
+        return { single: null, from: fromEl ? fromEl.value : 'unknown', to: toEl ? toEl.value : 'unknown' };
+      }
+      return { single: null, from: null, to: null };
+    }
+
+    function selectFeature(feature) {
+      document.querySelectorAll('.feature-pill').forEach(p => p.classList.toggle('active', p.dataset.feature === feature));
+      localStorage.setItem('cep_last_feature', feature);
+      applyFeatureSelection(feature);
+    }
+
+    function applyFeatureSelection(feature) {
+      const pairLang = document.getElementById('pairLanguageWrap');
+      const explainModes = document.getElementById('explainModesWrap');
+      const imageActionBtn = document.getElementById('imageActionBtn');
+      const fileLabel = document.getElementById('fileLabel');
+      const primary = document.getElementById('primaryAction');
+      const featureHint = document.getElementById('featureHint');
+      const input = document.getElementById('code');
+      const inputHint = document.getElementById('inputHint');
+
+      pairLang.style.display = 'none';
+      explainModes.style.display = 'none';
+      fileLabel.style.display = 'inline-flex';
+      imageActionBtn.style.display = 'inline-block';
+      featureHint.textContent = 'Use automatic detection for language.';
+
+      const placeholders = {
+        explainer: {
+          inputLabel: 'Paste your code here ...',
+          inputPlaceholder: 'Paste your code here...',
+          primaryText: 'Explain Code',
+          outputText: 'Your explanation will appear here...',
+          lineText: 'Click a line to see explanation...'
+        },
+        converter: {
+          inputLabel: 'Paste code to convert (or choose file)',
+          inputPlaceholder: 'Paste source code here...',
+          primaryText: 'Convert Code',
+          outputText: 'Converted code will appear here...',
+          lineText: 'Click a line to inspect converted code...'
+        },
+        optimizer: {
+          inputLabel: 'Paste code to optimize',
+          inputPlaceholder: 'Paste your code here...',
+          primaryText: 'Optimize Code',
+          outputText: 'Optimized code will appear here...',
+          lineText: 'Click a line to see suggestions...'
+        },
+        'prompt-to-code': {
+          inputLabel: 'Enter your prompt (describe what you want the code to do)',
+          inputPlaceholder: 'Write a prompt, e.g. "Create a Python function that reverses a string and handles Unicode."',
+          primaryText: 'Generate Code',
+          outputText: 'Generated code will appear here...',
+          lineText: 'Click a line to get explanation...'
+        },
+        'half-fill': {
+          inputLabel: 'Paste partial code (use placeholders where you want completion)',
+          inputPlaceholder: 'Paste partial code here...',
+          primaryText: 'Fill Code',
+          outputText: 'Filled code will appear here...',
+          lineText: 'Click a line to see explanation...'
+        }
+      };
+
+      const p = placeholders[feature] || placeholders.explainer;
+      input.placeholder = p.inputPlaceholder;
+      input.setAttribute('aria-label', p.inputLabel);
+      inputHint.textContent = p.inputLabel;
+      primary.textContent = p.primaryText;
+
+      if (feature === 'explainer') {
+        explainModes.style.display = 'flex';
+        imageActionBtn.textContent = '📸 Explain Image';
+        imageActionBtn.dataset.action = 'explain-image';
+      } else if (feature === 'converter') {
+        pairLang.style.display = 'flex';
+        imageActionBtn.textContent = '📸 Convert Image';
+        imageActionBtn.dataset.action = 'convert-image';
+        featureHint.textContent = 'Converter requires From → To language selectors.';
+      } else if (feature === 'optimizer') {
+        imageActionBtn.textContent = '🖼️ Optimize Image';
+        imageActionBtn.dataset.action = 'optimize-image';
+      } else if (feature === 'prompt-to-code') {
+        fileLabel.style.display = 'none';
+        imageActionBtn.style.display = 'none';
+        featureHint.textContent = 'Provide a natural-language prompt to generate code.';
+      } else if (feature === 'half-fill') {
+        imageActionBtn.textContent = '🖼️ Fill Image';
+        imageActionBtn.dataset.action = 'fill-image';
+      }
+
+      const outEl = document.getElementById('output');
+      const currentOut = outEl ? outEl.textContent : '';
+      const defaults = [
+        'Your explanation will appear here...',
+        'Converted code will appear here...',
+        'Optimized code will appear here...',
+        'Generated code will appear here...',
+        'Filled code will appear here...'
+      ];
+      if (!currentOut || defaults.includes(currentOut.trim())) {
+        outEl.textContent = p.outputText;
+      }
+      const lineEl = document.getElementById('lineExplanation');
+      if (lineEl && (lineEl.textContent.trim() === '' || lineEl.textContent === 'Click a line to see explanation...')) {
+        lineEl.textContent = p.lineText;
+      }
+    }
+
+    function setExplainMode(mode) {
+      document.querySelectorAll('.explain-mode-pill').forEach(p => p.classList.toggle('active', p.dataset.mode === mode));
+    }
+
+    async function primaryActionClicked() {
+      const feature = localStorage.getItem('cep_last_feature') || 'explainer';
+      const code = document.getElementById('code').value || '';
+      const langs = getSelectedLanguage(feature);
+      const mode = document.getElementById('mode')?.value || 'explain';
+
+      if (!code.trim() && feature !== 'prompt-to-code') return alert('Please paste code (or a prompt for Prompt→Code).');
+      if (feature === 'prompt-to-code' && !code.trim()) return alert('Please enter a prompt to generate code.');
+
+      let detected = detectLanguageFromCode(code);
+      let detectedSelect = detectionToSelectValue(detected);
+
+      if (feature === 'converter') {
+        const fromEl = document.getElementById('languageFrom');
+        if (detectedSelect && fromEl && fromEl.value.toLowerCase() !== detectedSelect.toLowerCase()) {
+          setExplanation(`🔎 Detected language: ${detected}. Switching "From" to ${detected}.`);
+          if ([...fromEl.options].some(o => o.value.toLowerCase() === detectedSelect.toLowerCase())) {
+            fromEl.value = detectedSelect;
+            langs.from = detectedSelect;
+          }
+          await new Promise(r => setTimeout(r, 600));
+        }
+      } else {
+        if (detected && detected !== 'unknown' && feature !== 'prompt-to-code') {
+          setExplanation(`🔎 Detected language: ${detected}.`);
+          await new Promise(r => setTimeout(r, 350));
+        } else {
+          setExplanation('⏳ Working... (language unknown — proceeding with heuristics)');
+        }
+      }
+
+      setExplanation('⏳ Working...');
+      try {
+        let endpoint = '/explain';
+        let body = { code, language: detectedSelect || 'unknown', mode };
+
+        if (feature === 'converter') {
+          endpoint = '/convert';
+          body = { code, from: langs.from || detectedSelect || 'unknown', to: langs.to || 'unknown' };
+        } else if (feature === 'optimizer') {
+          endpoint = '/optimize';
+          body = { code, language: detectedSelect || 'unknown', mode: 'optimize' };
+        } else if (feature === 'prompt-to-code') {
+          endpoint = '/prompt-to-code';
+          body = { prompt: code };
+        } else if (feature === 'half-fill') {
+          endpoint = '/fill-code';
+          body = { code, language: detectedSelect || 'unknown' };
+        } else {
+          endpoint = '/explain';
+          body = { code, language: detectedSelect || 'unknown', mode };
+        }
+
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') },
+          body: JSON.stringify(body)
+        });
+
+        const data = await res.json();
+        if (res.status >= 400) { setExplanation('❌ Error: ' + (data.error || data.message || JSON.stringify(data))); return; }
+
+        const text = data.explanation || data.result || data.generated || JSON.stringify(data, null, 2);
+        const langLabel = (feature === 'converter') ? `${body.from} → ${body.to}` : (detectedSelect || 'unknown');
+        setExplanation(`✅ Result — Language: ${langLabel}\n\n${text}`);
+
+        if (feature !== 'prompt-to-code') buildLineList(code);
+        if (typeof loadHistory === 'function') loadHistory();
+      } catch (err) {
+        setExplanation('❌ Error: ' + (err.message || err));
+      }
+    }
+
+    async function imageAction() {
+      const feature = localStorage.getItem('cep_last_feature') || 'explainer';
+      const fileInput = document.getElementById('codeImage');
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) return alert('Please select an image file first.');
+
+      const codePreview = document.getElementById('code').value || '';
+      const detected = detectLanguageFromCode(codePreview);
+      const detectedSelect = detectionToSelectValue(detected);
+      const langs = getSelectedLanguage(feature);
+      const langLabel = detectedSelect || langs.from || 'unknown';
+
+      const formData = new FormData();
+      formData.append('file', file);
+      if (langs.from) formData.append('from', langs.from);
+      if (langs.to) formData.append('to', langs.to);
+      if (detected && detected !== 'unknown') formData.append('detectedLanguage', detected);
+
+      setExplanation(`🔍 Processing image... (Language: ${langLabel})`);
+
+      let endpoint = '/scan-code';
+      if (feature === 'converter') endpoint = '/convert-image';
+      else if (feature === 'optimizer') endpoint = '/optimize-image';
+      else if (feature === 'half-fill') endpoint = '/fill-image';
+      else endpoint = '/scan-code';
+
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          body: formData,
+          headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') }
+        });
+        const data = await res.json();
+        if (res.status >= 400) { setExplanation('❌ Image Error: ' + (data.error || data.message || JSON.stringify(data))); return; }
+
+        if (data.extractedCode && data.explanation) {
+          setExplanation(`✅ Extracted — Language: ${langLabel}\n\n🧾 Extracted Code:\n\n${data.extractedCode}\n\n💡 Explanation:\n\n${data.explanation}`);
+          buildLineList(data.extractedCode);
+        } else if (data.result || data.explanation) {
+          setExplanation(`✅ Result — Language: ${langLabel}\n\n${data.result || data.explanation || JSON.stringify(data)}`);
+        } else {
+          setExplanation(JSON.stringify(data, null, 2));
+        }
+      } catch (err) {
+        setExplanation('⚠️ Error processing image: ' + (err.message || err));
+      }
+    }
+
+    function setExplanation(text) { const out = document.getElementById('output'); if (!out) return; out.textContent = text; }
+    function setLineExplanation(text) { const el = document.getElementById('lineExplanation'); if (!el) return; el.textContent = text; }
+
+    function removeExplanation() {
+      const feature = localStorage.getItem('cep_last_feature') || 'explainer';
+      const placeholders = {
+        explainer: 'Your explanation will appear here...',
+        converter: 'Converted code will appear here...',
+        optimizer: 'Optimized code will appear here...',
+        'prompt-to-code': 'Generated code will appear here...',
+        'half-fill': 'Filled code will appear here...'
+      };
+      document.getElementById('output').textContent = placeholders[feature] || 'Your explanation will appear here...';
+      const linesList = document.getElementById('linesList'); if (linesList) linesList.innerHTML = '';
+      document.getElementById('lineExplanation').textContent = 'Click a line to see explanation...';
+    }
+
+    function buildLineList(code) {
+      const linesList = document.getElementById('linesList'); if (!linesList) return; linesList.innerHTML = ''; if (!code) return;
+      const lines = String(code).split('\n');
+      lines.forEach((line, idx) => {
+        const div = document.createElement('div');
+        div.className = 'line';
+        div.style.padding = '6px';
+        div.style.borderBottom = '1px solid rgba(255,255,255,0.02)';
+        div.style.cursor = 'pointer';
+        div.style.fontFamily = 'var(--mono)';
+        div.style.fontSize = '13px';
+        div.textContent = `${idx + 1}: ${line}`;
+        div.addEventListener('click', () => explainLine(code, idx + 1));
+        linesList.appendChild(div);
+      });
+    }
+
+    async function explainLine(code, lineNumber) {
+      setLineExplanation('⏳ Explaining line ' + lineNumber + '...');
+      try {
+        const feature = localStorage.getItem('cep_last_feature') || 'explainer';
+        const langs = getSelectedLanguage(feature);
+        let language = langs.from || 'unknown';
+        if (!language || language === 'unknown') {
+          const detected = detectLanguageFromCode(code);
+          language = detectionToSelectValue(detected) || language;
+        }
+        const res = await fetch('/explain-line', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') },
+          body: JSON.stringify({ code, lineNumber, language })
+        });
+        const data = await res.json();
+        if (res.status >= 400) { setLineExplanation('❌ Error: ' + (data.error || data.message || JSON.stringify(data))); return; }
+        setLineExplanation(`Line ${lineNumber}: ${data.explanation || 'No explanation returned.'}`);
+      } catch (err) { setLineExplanation('❌ Error explaining line.'); }
+    }
+
+    async function loadHistory() {
+      try {
+        const res = await fetch('/history', { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') } });
+        const data = await res.json();
+        const list = document.getElementById('historyList'); if (!list) return; list.innerHTML = '';
+        if (!data.history || !data.history.length) {
+          const p = document.createElement('p'); p.style.opacity = '0.8'; p.textContent = 'No history yet.'; list.appendChild(p); return;
+        }
+        data.history.forEach(h => {
+          const wrapper = document.createElement('div'); wrapper.className = 'history-item'; wrapper.style.marginBottom = '12px';
+          const header = document.createElement('div'); header.style.display = 'flex'; header.style.justifyContent = 'space-between'; header.style.alignItems = 'center';
+          const title = document.createElement('div'); title.textContent = `${h.language} | ${ (h.mode || 'explain') } — ${ new Date(h.createdAt).toLocaleString() }`; title.style.fontWeight = '600';
+          const openBtn = document.createElement('button'); openBtn.className = 'small-btn'; openBtn.textContent = 'Load'; openBtn.onclick = () => { document.getElementById('code').value = h.code; setExplanation(h.explanation || 'No explanation available.'); buildLineList(h.code || ''); };
+          header.appendChild(title); header.appendChild(openBtn);
+          const preCode = document.createElement('pre'); preCode.textContent = h.code || ''; preCode.style.margin = '8px 0';
+          const details = document.createElement('details'); const summary = document.createElement('summary'); summary.textContent = 'View Explanation'; const preExp = document.createElement('pre'); preExp.textContent = h.explanation || '';
+          details.appendChild(summary); details.appendChild(preExp);
+          wrapper.appendChild(header); wrapper.appendChild(preCode); wrapper.appendChild(details); list.appendChild(wrapper);
+        });
+      } catch (err) {
+        console.error('Failed to load history:', err);
+      }
+    }
+
+    async function deleteHistory() {
+      if (!confirm('Are you sure you want to delete your entire history?')) return;
+      try {
+        const res = await fetch('/history', { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') }});
+        const data = await res.json();
+        alert(data.message || 'History deleted.');
+        loadHistory();
+      } catch (err) { alert('❌ Failed to delete history: ' + (err.message || err)); }
+    }
+
+    function saveLocal() {
+      const code = document.getElementById('code').value;
+      const langs = getSelectedLanguage();
+      const language = langs.from || 'unknown';
+      const mode = document.getElementById('mode')?.value || 'explain';
+      const localHist = JSON.parse(localStorage.getItem('localHistory') || '[]');
+      localHist.unshift({ code, language, mode, date: new Date().toISOString() });
+      localStorage.setItem('localHistory', JSON.stringify(localHist));
+      alert('✅ Saved locally!');
+    }
+
+    async function logout() {
+      try { await fetch('/logout', { method: 'POST', headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') } }).catch(()=>{}); } catch(e){}
+      localStorage.removeItem('token'); localStorage.removeItem('cep_last_feature'); window.location.href='login.html';
+    }
+
+    // Responsive clamp for output & line explanation (prevents expansion on small screens)
+    function clampOutputHeight() {
+      const out = document.getElementById('outputPre');
+      if (!out) return;
+      const vh = Math.max(document.documentElement.clientHeight || 600, window.innerHeight || 600);
+      // keep output height to around 45% of viewport (min 220, max 520)
+      const h = Math.min(Math.max(Math.round(vh * 0.45), 220), 520);
+      out.style.maxHeight = h + 'px';
+      // adjust line explanation similarly
+      const lineExp = document.getElementById('lineExplanation');
+      if (lineExp) {
+        const lh = Math.min(Math.max(Math.round(vh * 0.28), 140), 400);
+        lineExp.style.maxHeight = lh + 'px';
+      }
+    }
+
+    window.addEventListener('load', () => {
+      const last = localStorage.getItem('cep_last_feature') || 'explainer';
+      document.querySelectorAll('.feature-pill').forEach(p => p.classList.toggle('active', p.dataset.feature === last));
+      applyFeatureSelection(last);
+      setExplainMode('explain');
+      document.getElementById('logoutBtn').addEventListener('click', logout);
+      document.getElementById('fileLabel').addEventListener('click', () => document.getElementById('codeImage').click());
+      if (typeof loadHistory === 'function') loadHistory();
+      document.querySelectorAll('.feature-pill').forEach(p => p.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); p.click(); } }));
+      clampOutputHeight();
+    });
+    window.addEventListener('resize', clampOutputHeight);
+
+    // expose functions
+    window.selectFeature = selectFeature;
+    window.applyFeatureSelection = applyFeatureSelection;
+    window.setExplainMode = setExplainMode;
+    window.primaryActionClicked = primaryActionClicked;
+    window.imageAction = imageAction;
+    window.removeExplanation = removeExplanation;
+    window.saveLocal = saveLocal;
+    window.loadHistory = loadHistory;
+    window.deleteHistory = deleteHistory;
+  </script>
+</body>
+</html>
