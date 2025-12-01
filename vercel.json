@@ -1,8 +1,0 @@
-{
-  "rewrites": [
-    {
-      "source": "/(explain|convert|optimize|prompt-to-code|fill-code|scan-code|convert-image|optimize-image|fill-image|explain-line|history|login|register|logout)",
-      "destination": "https://code-explainer-pro.onrender.com/$1"
-    }
-  ]
-}
