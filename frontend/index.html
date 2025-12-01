@@ -353,7 +353,7 @@
         </main>
       </div>
 
-      <footer>Made with ❤️ by R4V || Code Explainer Pro</footer>
+      <footer>Made with ❤️ by R4V1 || Code Explainer Pro</footer>
     </div>
   </div>
 
@@ -395,6 +395,238 @@
       return { single: null, from: null, to: null };
     }
 
+    /* -------------------------
+       Primary actions — uses local API_BASE (set below in server deploy)
+       ------------------------- */
+    // default API base (local dev or change to render/your backend)
+    const API_BASE = "https://code-explainer-pro.onrender.com";
+    async function primaryActionClicked() {
+      const feature = localStorage.getItem('cep_last_feature') || 'explainer';
+      const code = document.getElementById('code').value || '';
+      const langs = getSelectedLanguage(feature);
+      const mode = document.getElementById('mode')?.value || 'explain';
+
+      if (!code.trim() && feature !== 'prompt-to-code') return alert('Please paste code (or a prompt for Prompt→Code).');
+      if (feature === 'prompt-to-code' && !code.trim()) return alert('Please enter a prompt to generate code.');
+
+      let detected = detectLanguageFromCode(code);
+      let detectedSelect = detectionToSelectValue(detected);
+
+      if (feature === 'converter') {
+        const fromEl = document.getElementById('languageFrom');
+        if (detectedSelect && fromEl && fromEl.value.toLowerCase() !== detectedSelect.toLowerCase()) {
+          setExplanation(`🔎 Detected language: ${detected}. Switching "From" to ${detected}.`);
+          if ([...fromEl.options].some(o => o.value.toLowerCase() === detectedSelect.toLowerCase())) {
+            fromEl.value = detectedSelect;
+            langs.from = detectedSelect;
+          }
+          await new Promise(r => setTimeout(r, 600));
+        }
+      } else {
+        if (detected && detected !== 'unknown' && feature !== 'prompt-to-code') {
+          setExplanation(`🔎 Detected language: ${detected}.`);
+          await new Promise(r => setTimeout(r, 350));
+        } else {
+          setExplanation('⏳ Working... (language unknown — proceeding with heuristics)');
+        }
+      }
+
+      setExplanation('⏳ Working...');
+      try {
+        let endpoint = `${API_BASE}/explain`;
+        let body = { code, language: detectedSelect || 'unknown', mode };
+
+        if (feature === 'converter') {
+          endpoint = `${API_BASE}/convert`;
+          body = { code, from: langs.from || detectedSelect || 'unknown', to: langs.to || 'unknown' };
+        } else if (feature === 'optimizer') {
+          endpoint = `${API_BASE}/optimize`;
+          body = { code, language: detectedSelect || 'unknown', mode: 'optimize' };
+        } else if (feature === 'prompt-to-code') {
+          endpoint = `${API_BASE}/prompt-to-code`;
+          body = { prompt: code };
+        } else if (feature === 'half-fill') {
+          endpoint = `${API_BASE}/fill-code`;
+          body = { code, language: detectedSelect || 'unknown' };
+        } else {
+          endpoint = `${API_BASE}/explain`;
+          body = { code, language: detectedSelect || 'unknown', mode };
+        }
+
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') },
+          body: JSON.stringify(body)
+        });
+
+        const data = await res.json();
+        if (res.status >= 400) { setExplanation('❌ Error: ' + (data.error || data.message || JSON.stringify(data))); return; }
+
+        const text = data.explanation || data.result || data.generated || JSON.stringify(data, null, 2);
+        const langLabel = (feature === 'converter') ? `${body.from} → ${body.to}` : (detectedSelect || 'unknown');
+        setExplanation(`✅ Result — Language: ${langLabel}\n\n${text}`);
+
+        if (feature !== 'prompt-to-code') buildLineList(code);
+        if (typeof loadHistory === 'function') loadHistory();
+      } catch (err) {
+        setExplanation('❌ Error: ' + (err.message || err));
+      }
+    }
+
+    async function imageAction() {
+      const feature = localStorage.getItem('cep_last_feature') || 'explainer';
+      const fileInput = document.getElementById('codeImage');
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) return alert('Please select an image file first.');
+
+      const codePreview = document.getElementById('code').value || '';
+      const detected = detectLanguageFromCode(codePreview);
+      const detectedSelect = detectionToSelectValue(detected);
+      const langs = getSelectedLanguage(feature);
+      const langLabel = detectedSelect || langs.from || 'unknown';
+
+      const formData = new FormData();
+      formData.append('file', file);
+      if (langs.from) formData.append('from', langs.from);
+      if (langs.to) formData.append('to', langs.to);
+      if (detected && detected !== 'unknown') formData.append('detectedLanguage', detected);
+
+      setExplanation(`🔍 Processing image... (Language: ${langLabel})`);
+
+      let endpoint = `${API_BASE}/scan-code`;
+      if (feature === 'converter') endpoint = `${API_BASE}/convert-image`;
+      else if (feature === 'optimizer') endpoint = `${API_BASE}/optimize-image`;
+      else if (feature === 'half-fill') endpoint = `${API_BASE}/fill-image`;
+      else endpoint = `${API_BASE}/scan-code`;
+
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          body: formData,
+          headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') }
+        });
+        const data = await res.json();
+        if (res.status >= 400) { setExplanation('❌ Image Error: ' + (data.error || data.message || JSON.stringify(data))); return; }
+
+        if (data.extractedCode && data.explanation) {
+          setExplanation(`✅ Extracted — Language: ${langLabel}\n\n🧾 Extracted Code:\n\n${data.extractedCode}\n\n💡 Explanation:\n\n${data.explanation}`);
+          buildLineList(data.extractedCode);
+        } else if (data.result || data.explanation) {
+          setExplanation(`✅ Result — Language: ${langLabel}\n\n${data.result || data.explanation || JSON.stringify(data)}`);
+        } else {
+          setExplanation(JSON.stringify(data, null, 2));
+        }
+      } catch (err) {
+        setExplanation('⚠️ Error processing image: ' + (err.message || err));
+      }
+    }
+
+    function setExplanation(text) { const out = document.getElementById('output'); if (!out) return; out.textContent = text; }
+    function setLineExplanation(text) { const el = document.getElementById('lineExplanation'); if (!el) return; el.textContent = text; }
+
+    function removeExplanation() {
+      const feature = localStorage.getItem('cep_last_feature') || 'explainer';
+      const placeholders = {
+        explainer: 'Your explanation will appear here...',
+        converter: 'Converted code will appear here...',
+        optimizer: 'Optimized code will appear here...',
+        'prompt-to-code': 'Generated code will appear here...',
+        'half-fill': 'Filled code will appear here...'
+      };
+      document.getElementById('output').textContent = placeholders[feature] || 'Your explanation will appear here...';
+      const linesList = document.getElementById('linesList'); if (linesList) linesList.innerHTML = '';
+      document.getElementById('lineExplanation').textContent = 'Click a line to see explanation...';
+    }
+
+    function buildLineList(code) {
+      const linesList = document.getElementById('linesList'); if (!linesList) return; linesList.innerHTML = ''; if (!code) return;
+      const lines = String(code).split('\n');
+      lines.forEach((line, idx) => {
+        const div = document.createElement('div');
+        div.className = 'line';
+        div.style.padding = '6px';
+        div.style.borderBottom = '1px solid rgba(255,255,255,0.02)';
+        div.style.cursor = 'pointer';
+        div.style.fontFamily = 'var(--mono)';
+        div.style.fontSize = '13px';
+        div.textContent = `${idx + 1}: ${line}`;
+        div.addEventListener('click', () => explainLine(code, idx + 1));
+        linesList.appendChild(div);
+      });
+    }
+
+    async function explainLine(code, lineNumber) {
+      setLineExplanation('⏳ Explaining line ' + lineNumber + '...');
+      try {
+        const feature = localStorage.getItem('cep_last_feature') || 'explainer';
+        const langs = getSelectedLanguage(feature);
+        let language = langs.from || 'unknown';
+        if (!language || language === 'unknown') {
+          const detected = detectLanguageFromCode(code);
+          language = detectionToSelectValue(detected) || language;
+        }
+        const res = await fetch(`${API_BASE}/explain-line`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') },
+          body: JSON.stringify({ code, lineNumber, language })
+        });
+        const data = await res.json();
+        if (res.status >= 400) { setLineExplanation('❌ Error: ' + (data.error || data.message || JSON.stringify(data))); return; }
+        setLineExplanation(`Line ${lineNumber}: ${data.explanation || 'No explanation returned.'}`);
+      } catch (err) { setLineExplanation('❌ Error explaining line.'); }
+    }
+
+    async function loadHistory() {
+      try {
+        const res = await fetch(`${API_BASE}/history`, { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') } });
+        const data = await res.json();
+        const list = document.getElementById('historyList'); if (!list) return; list.innerHTML = '';
+        if (!data.history || !data.history.length) {
+          const p = document.createElement('p'); p.style.opacity = '0.8'; p.textContent = 'No history yet.'; list.appendChild(p); return;
+        }
+        data.history.forEach(h => {
+          const wrapper = document.createElement('div'); wrapper.className = 'history-item'; wrapper.style.marginBottom = '12px';
+          const header = document.createElement('div'); header.style.display = 'flex'; header.style.justifyContent = 'space-between'; header.style.alignItems = 'center';
+          const title = document.createElement('div'); title.textContent = `${h.language} | ${ (h.mode || 'explain') } — ${ new Date(h.createdAt).toLocaleString() }`; title.style.fontWeight = '600';
+          const openBtn = document.createElement('button'); openBtn.className = 'small-btn'; openBtn.textContent = 'Load'; openBtn.onclick = () => { document.getElementById('code').value = h.code; setExplanation(h.explanation || 'No explanation available.'); buildLineList(h.code || ''); };
+          header.appendChild(title); header.appendChild(openBtn);
+          const preCode = document.createElement('pre'); preCode.textContent = h.code || ''; preCode.style.margin = '8px 0';
+          const details = document.createElement('details'); const summary = document.createElement('summary'); summary.textContent = 'View Explanation'; const preExp = document.createElement('pre'); preExp.textContent = h.explanation || '';
+          details.appendChild(summary); details.appendChild(preExp);
+          wrapper.appendChild(header); wrapper.appendChild(preCode); wrapper.appendChild(details); list.appendChild(wrapper);
+        });
+      } catch (err) {
+        console.error('Failed to load history:', err);
+      }
+    }
+
+    async function deleteHistory() {
+      if (!confirm('Are you sure you want to delete your entire history?')) return;
+      try {
+        const res = await fetch(`${API_BASE}/history`, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') }});
+        const data = await res.json();
+        alert(data.message || 'History deleted.');
+        loadHistory();
+      } catch (err) { alert('❌ Failed to delete history: ' + (err.message || err)); }
+    }
+
+    function saveLocal() {
+      const code = document.getElementById('code').value;
+      const langs = getSelectedLanguage();
+      const language = langs.from || 'unknown';
+      const mode = document.getElementById('mode')?.value || 'explain';
+      const localHist = JSON.parse(localStorage.getItem('localHistory') || '[]');
+      localHist.unshift({ code, language, mode, date: new Date().toISOString() });
+      localStorage.setItem('localHistory', JSON.stringify(localHist));
+      alert('✅ Saved locally!');
+    }
+
+    async function logout() {
+      try { await fetch(`${API_BASE}/logout`, { method: 'POST', headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') } }).catch(()=>{}); } catch(e){}
+      localStorage.removeItem('token'); localStorage.removeItem('cep_last_feature'); window.location.href='login.html';
+    }
+
+    // UI helpers
     function selectFeature(feature) {
       document.querySelectorAll('.feature-pill').forEach(p => p.classList.toggle('active', p.dataset.feature === feature));
       localStorage.setItem('cep_last_feature', feature);
@@ -504,241 +736,13 @@
       document.querySelectorAll('.explain-mode-pill').forEach(p => p.classList.toggle('active', p.dataset.mode === mode));
     }
 
-    async function primaryActionClicked() {
-      const feature = localStorage.getItem('cep_last_feature') || 'explainer';
-      const code = document.getElementById('code').value || '';
-      const langs = getSelectedLanguage(feature);
-      const mode = document.getElementById('mode')?.value || 'explain';
-
-      if (!code.trim() && feature !== 'prompt-to-code') return alert('Please paste code (or a prompt for Prompt→Code).');
-      if (feature === 'prompt-to-code' && !code.trim()) return alert('Please enter a prompt to generate code.');
-
-      let detected = detectLanguageFromCode(code);
-      let detectedSelect = detectionToSelectValue(detected);
-
-      if (feature === 'converter') {
-        const fromEl = document.getElementById('languageFrom');
-        if (detectedSelect && fromEl && fromEl.value.toLowerCase() !== detectedSelect.toLowerCase()) {
-          setExplanation(`🔎 Detected language: ${detected}. Switching "From" to ${detected}.`);
-          if ([...fromEl.options].some(o => o.value.toLowerCase() === detectedSelect.toLowerCase())) {
-            fromEl.value = detectedSelect;
-            langs.from = detectedSelect;
-          }
-          await new Promise(r => setTimeout(r, 600));
-        }
-      } else {
-        if (detected && detected !== 'unknown' && feature !== 'prompt-to-code') {
-          setExplanation(`🔎 Detected language: ${detected}.`);
-          await new Promise(r => setTimeout(r, 350));
-        } else {
-          setExplanation('⏳ Working... (language unknown — proceeding with heuristics)');
-        }
-      }
-
-      setExplanation('⏳ Working...');
-      try {
-        let endpoint = '/explain';
-        let body = { code, language: detectedSelect || 'unknown', mode };
-
-        if (feature === 'converter') {
-          endpoint = '/convert';
-          body = { code, from: langs.from || detectedSelect || 'unknown', to: langs.to || 'unknown' };
-        } else if (feature === 'optimizer') {
-          endpoint = '/optimize';
-          body = { code, language: detectedSelect || 'unknown', mode: 'optimize' };
-        } else if (feature === 'prompt-to-code') {
-          endpoint = '/prompt-to-code';
-          body = { prompt: code };
-        } else if (feature === 'half-fill') {
-          endpoint = '/fill-code';
-          body = { code, language: detectedSelect || 'unknown' };
-        } else {
-          endpoint = '/explain';
-          body = { code, language: detectedSelect || 'unknown', mode };
-        }
-
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') },
-          body: JSON.stringify(body)
-        });
-
-        const data = await res.json();
-        if (res.status >= 400) { setExplanation('❌ Error: ' + (data.error || data.message || JSON.stringify(data))); return; }
-
-        const text = data.explanation || data.result || data.generated || JSON.stringify(data, null, 2);
-        const langLabel = (feature === 'converter') ? `${body.from} → ${body.to}` : (detectedSelect || 'unknown');
-        setExplanation(`✅ Result — Language: ${langLabel}\n\n${text}`);
-
-        if (feature !== 'prompt-to-code') buildLineList(code);
-        if (typeof loadHistory === 'function') loadHistory();
-      } catch (err) {
-        setExplanation('❌ Error: ' + (err.message || err));
-      }
-    }
-
-    async function imageAction() {
-      const feature = localStorage.getItem('cep_last_feature') || 'explainer';
-      const fileInput = document.getElementById('codeImage');
-      const file = fileInput.files && fileInput.files[0];
-      if (!file) return alert('Please select an image file first.');
-
-      const codePreview = document.getElementById('code').value || '';
-      const detected = detectLanguageFromCode(codePreview);
-      const detectedSelect = detectionToSelectValue(detected);
-      const langs = getSelectedLanguage(feature);
-      const langLabel = detectedSelect || langs.from || 'unknown';
-
-      const formData = new FormData();
-      formData.append('file', file);
-      if (langs.from) formData.append('from', langs.from);
-      if (langs.to) formData.append('to', langs.to);
-      if (detected && detected !== 'unknown') formData.append('detectedLanguage', detected);
-
-      setExplanation(`🔍 Processing image... (Language: ${langLabel})`);
-
-      let endpoint = '/scan-code';
-      if (feature === 'converter') endpoint = '/convert-image';
-      else if (feature === 'optimizer') endpoint = '/optimize-image';
-      else if (feature === 'half-fill') endpoint = '/fill-image';
-      else endpoint = '/scan-code';
-
-      try {
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          body: formData,
-          headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') }
-        });
-        const data = await res.json();
-        if (res.status >= 400) { setExplanation('❌ Image Error: ' + (data.error || data.message || JSON.stringify(data))); return; }
-
-        if (data.extractedCode && data.explanation) {
-          setExplanation(`✅ Extracted — Language: ${langLabel}\n\n🧾 Extracted Code:\n\n${data.extractedCode}\n\n💡 Explanation:\n\n${data.explanation}`);
-          buildLineList(data.extractedCode);
-        } else if (data.result || data.explanation) {
-          setExplanation(`✅ Result — Language: ${langLabel}\n\n${data.result || data.explanation || JSON.stringify(data)}`);
-        } else {
-          setExplanation(JSON.stringify(data, null, 2));
-        }
-      } catch (err) {
-        setExplanation('⚠️ Error processing image: ' + (err.message || err));
-      }
-    }
-
-    function setExplanation(text) { const out = document.getElementById('output'); if (!out) return; out.textContent = text; }
-    function setLineExplanation(text) { const el = document.getElementById('lineExplanation'); if (!el) return; el.textContent = text; }
-
-    function removeExplanation() {
-      const feature = localStorage.getItem('cep_last_feature') || 'explainer';
-      const placeholders = {
-        explainer: 'Your explanation will appear here...',
-        converter: 'Converted code will appear here...',
-        optimizer: 'Optimized code will appear here...',
-        'prompt-to-code': 'Generated code will appear here...',
-        'half-fill': 'Filled code will appear here...'
-      };
-      document.getElementById('output').textContent = placeholders[feature] || 'Your explanation will appear here...';
-      const linesList = document.getElementById('linesList'); if (linesList) linesList.innerHTML = '';
-      document.getElementById('lineExplanation').textContent = 'Click a line to see explanation...';
-    }
-
-    function buildLineList(code) {
-      const linesList = document.getElementById('linesList'); if (!linesList) return; linesList.innerHTML = ''; if (!code) return;
-      const lines = String(code).split('\n');
-      lines.forEach((line, idx) => {
-        const div = document.createElement('div');
-        div.className = 'line';
-        div.style.padding = '6px';
-        div.style.borderBottom = '1px solid rgba(255,255,255,0.02)';
-        div.style.cursor = 'pointer';
-        div.style.fontFamily = 'var(--mono)';
-        div.style.fontSize = '13px';
-        div.textContent = `${idx + 1}: ${line}`;
-        div.addEventListener('click', () => explainLine(code, idx + 1));
-        linesList.appendChild(div);
-      });
-    }
-
-    async function explainLine(code, lineNumber) {
-      setLineExplanation('⏳ Explaining line ' + lineNumber + '...');
-      try {
-        const feature = localStorage.getItem('cep_last_feature') || 'explainer';
-        const langs = getSelectedLanguage(feature);
-        let language = langs.from || 'unknown';
-        if (!language || language === 'unknown') {
-          const detected = detectLanguageFromCode(code);
-          language = detectionToSelectValue(detected) || language;
-        }
-        const res = await fetch('/explain-line', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') },
-          body: JSON.stringify({ code, lineNumber, language })
-        });
-        const data = await res.json();
-        if (res.status >= 400) { setLineExplanation('❌ Error: ' + (data.error || data.message || JSON.stringify(data))); return; }
-        setLineExplanation(`Line ${lineNumber}: ${data.explanation || 'No explanation returned.'}`);
-      } catch (err) { setLineExplanation('❌ Error explaining line.'); }
-    }
-
-    async function loadHistory() {
-      try {
-        const res = await fetch('/history', { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') } });
-        const data = await res.json();
-        const list = document.getElementById('historyList'); if (!list) return; list.innerHTML = '';
-        if (!data.history || !data.history.length) {
-          const p = document.createElement('p'); p.style.opacity = '0.8'; p.textContent = 'No history yet.'; list.appendChild(p); return;
-        }
-        data.history.forEach(h => {
-          const wrapper = document.createElement('div'); wrapper.className = 'history-item'; wrapper.style.marginBottom = '12px';
-          const header = document.createElement('div'); header.style.display = 'flex'; header.style.justifyContent = 'space-between'; header.style.alignItems = 'center';
-          const title = document.createElement('div'); title.textContent = `${h.language} | ${ (h.mode || 'explain') } — ${ new Date(h.createdAt).toLocaleString() }`; title.style.fontWeight = '600';
-          const openBtn = document.createElement('button'); openBtn.className = 'small-btn'; openBtn.textContent = 'Load'; openBtn.onclick = () => { document.getElementById('code').value = h.code; setExplanation(h.explanation || 'No explanation available.'); buildLineList(h.code || ''); };
-          header.appendChild(title); header.appendChild(openBtn);
-          const preCode = document.createElement('pre'); preCode.textContent = h.code || ''; preCode.style.margin = '8px 0';
-          const details = document.createElement('details'); const summary = document.createElement('summary'); summary.textContent = 'View Explanation'; const preExp = document.createElement('pre'); preExp.textContent = h.explanation || '';
-          details.appendChild(summary); details.appendChild(preExp);
-          wrapper.appendChild(header); wrapper.appendChild(preCode); wrapper.appendChild(details); list.appendChild(wrapper);
-        });
-      } catch (err) {
-        console.error('Failed to load history:', err);
-      }
-    }
-
-    async function deleteHistory() {
-      if (!confirm('Are you sure you want to delete your entire history?')) return;
-      try {
-        const res = await fetch('/history', { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') }});
-        const data = await res.json();
-        alert(data.message || 'History deleted.');
-        loadHistory();
-      } catch (err) { alert('❌ Failed to delete history: ' + (err.message || err)); }
-    }
-
-    function saveLocal() {
-      const code = document.getElementById('code').value;
-      const langs = getSelectedLanguage();
-      const language = langs.from || 'unknown';
-      const mode = document.getElementById('mode')?.value || 'explain';
-      const localHist = JSON.parse(localStorage.getItem('localHistory') || '[]');
-      localHist.unshift({ code, language, mode, date: new Date().toISOString() });
-      localStorage.setItem('localHistory', JSON.stringify(localHist));
-      alert('✅ Saved locally!');
-    }
-
-    async function logout() {
-      try { await fetch('/logout', { method: 'POST', headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') } }).catch(()=>{}); } catch(e){}
-      localStorage.removeItem('token'); localStorage.removeItem('cep_last_feature'); window.location.href='login.html';
-    }
-
-    // Responsive clamp for output & line explanation (prevents expansion on small screens)
+    // responsive clamp
     function clampOutputHeight() {
       const out = document.getElementById('outputPre');
       if (!out) return;
       const vh = Math.max(document.documentElement.clientHeight || 600, window.innerHeight || 600);
-      // keep output height to around 45% of viewport (min 220, max 520)
       const h = Math.min(Math.max(Math.round(vh * 0.45), 220), 520);
       out.style.maxHeight = h + 'px';
-      // adjust line explanation similarly
       const lineExp = document.getElementById('lineExplanation');
       if (lineExp) {
         const lh = Math.min(Math.max(Math.round(vh * 0.28), 140), 400);
@@ -759,7 +763,7 @@
     });
     window.addEventListener('resize', clampOutputHeight);
 
-    // expose functions
+    // export functions needed by markup
     window.selectFeature = selectFeature;
     window.applyFeatureSelection = applyFeatureSelection;
     window.setExplainMode = setExplainMode;
