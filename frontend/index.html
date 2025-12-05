@@ -225,10 +225,6 @@
             <h1>⚡ Code Explainer Pro</h1>
             <div class="hint" style="margin-top:2px">Where your code becomes clarity.</div>
           </div>
-        </div>
-        <div>
-          <button id="logoutBtn" class="btn btn-ghost" title="Logout">Logout</button>
-        </div>
       </header>
 
       <div class="layout">
@@ -774,7 +770,6 @@
       // initialize explain mode UI and hidden input
       setExplainMode('explain');
 
-      document.getElementById('logoutBtn').addEventListener('click', logout);
       document.getElementById('fileLabel').addEventListener('click', () => document.getElementById('codeImage').click());
       if (typeof loadHistory === 'function') loadHistory();
       document.querySelectorAll('.feature-pill').forEach(p => p.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); p.click(); } }));
