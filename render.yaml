@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: code-explainer-pro
+    env: node
+    region: singapore  # or oregon, frankfurt, etc.
+    plan: free
+    buildCommand: |
+      cd backend
+      npm install
+    startCommand: |
+      cd backend
+      node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+    disk:
+      name: data
+      mountPath: /opt/render/project/src/backend
+      sizeGB: 1

@@ -1,9 +1,4 @@
-// backend/server.js
-console.log(
-  "🔑 Loaded API Key:",
-  process.env.OPENROUTER_API_KEY ? "✅ Found" : "❌ Missing"
-);
-
+// backend/server.js - Optimized for Render
 import express from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
@@ -15,19 +10,30 @@ import fs from "fs";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import rateLimit from "express-rate-limit";
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Import auth functions
 import { registerUser, loginUser, verifyToken } from "./auth.js";
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: '*',
+  credentials: true
+}));
 app.use(bodyParser.json({ limit: "10mb" }));
+app.use(bodyParser.urlencoded({ extended: true }));
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
-const __dirname = path.resolve();
+const PORT = process.env.PORT || 3000;
 
 // ========== RATE LIMITING ==========
 const aiLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 10, // adjust as needed
+  max: 30,
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -53,8 +59,23 @@ app.use(
 const upload = multer({ dest: "uploads/" });
 const USERS_FILE = path.join(__dirname, "users.json");
 const HISTORY_FILE = path.join(__dirname, "user_history.json");
-if (!fs.existsSync(USERS_FILE)) fs.writeFileSync(USERS_FILE, "[]");
-if (!fs.existsSync(HISTORY_FILE)) fs.writeFileSync(HISTORY_FILE, "[]");
+
+// Create files if they don't exist
+if (!fs.existsSync(USERS_FILE)) {
+  fs.writeFileSync(USERS_FILE, "[]");
+  console.log("✅ Created users.json");
+}
+
+if (!fs.existsSync(HISTORY_FILE)) {
+  fs.writeFileSync(HISTORY_FILE, "[]");
+  console.log("✅ Created user_history.json");
+}
+
+// Create uploads directory
+if (!fs.existsSync(path.join(__dirname, "uploads"))) {
+  fs.mkdirSync(path.join(__dirname, "uploads"), { recursive: true });
+  console.log("✅ Created uploads directory");
+}
 
 // ========== AUTH ROUTES ==========
 app.post("/register", (req, res) => {
@@ -351,6 +372,30 @@ async function ocrFileAndDelete(filePath) {
   return data?.text || "";
 }
 
+// Generic image scanner endpoint
+app.post("/scan-code", upload.single("file"), async (req, res) => {
+  const token = req.headers.authorization?.split(" ")[1];
+  const user = verifyToken(token);
+  if (!user) return res.status(403).json({ error: "Unauthorized" });
+  if (!req.file) return res.status(400).json({ error: "No image uploaded" });
+
+  try {
+    const text = await ocrFileAndDelete(req.file.path);
+    if (!text.trim()) return res.status(400).json({ error: "No readable code found" });
+
+    const { language = "unknown" } = req.body;
+    
+    // Get explanation for the extracted code
+    const messages = buildExplainMessages({ code: text, language, mode: "explain" });
+    const explanation = await callOpenRouter(messages);
+
+    res.json({ extractedCode: text.trim(), explanation });
+  } catch (err) {
+    console.error("❌ scan-code error:", err);
+    res.status(500).json({ error: "Image processing failed", details: err.message });
+  }
+});
+
 app.post("/convert-image", upload.single("file"), async (req, res) => {
   const token = req.headers.authorization?.split(" ")[1];
   const user = verifyToken(token);
@@ -473,13 +518,48 @@ app.delete("/history", (req, res) => {
   res.json({ message: "History cleared successfully" });
 });
 
-// ========== FRONTEND ==========
-// Splash screen as starting page
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "../frontend/splash.html"));
-});
-// Serve all other static frontend files
-app.use(express.static(path.join(__dirname, "../frontend")));
+// ========== FRONTEND SERVING ==========
+const frontendPath = path.join(__dirname, '../frontend');
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`✅ Server running at http://localhost:${PORT}`));
+// Check if frontend exists
+if (fs.existsSync(frontendPath)) {
+  console.log("✅ Frontend directory found, serving static files");
+  
+  // Serve splash screen
+  app.get("/", (req, res) => {
+    res.sendFile(path.join(frontendPath, "splash.html"));
+  });
+  
+  // Serve login page
+  app.get("/login", (req, res) => {
+    res.sendFile(path.join(frontendPath, "login.html"));
+  });
+  
+  // Serve main app
+  app.get("/app", (req, res) => {
+    res.sendFile(path.join(frontendPath, "index.html"));
+  });
+  
+  // Serve all static files
+  app.use(express.static(frontendPath));
+} else {
+  console.log("⚠️ Frontend directory not found, serving API only");
+  
+  app.get("/", (req, res) => {
+    res.json({ 
+      message: "Code Explainer Pro API is running",
+      endpoints: [
+        "/explain", "/convert", "/optimize", "/prompt-to-code", "/fill-code",
+        "/scan-code", "/convert-image", "/optimize-image", "/fill-image",
+        "/history", "/login", "/register"
+      ]
+    });
+  });
+}
+
+// ========== START SERVER ==========
+app.listen(PORT, () => {
+  console.log(`✅ Server running at http://localhost:${PORT}`);
+  console.log(`📁 Frontend path: ${frontendPath}`);
+  console.log(`🔑 API Key loaded: ${OPENROUTER_API_KEY ? "Yes" : "No"}`);
+});

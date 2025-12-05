@@ -1,0 +1,32 @@
+# ================================
+# BACKEND .gitignore
+# ================================
+
+# Environment files - NEVER commit these!
+.env
+.env.local
+.env.production
+
+# Node modules
+node_modules/
+
+# Uploads directory
+uploads/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Log files
+*.log
+
+# Database files (if any)
+*.db
+*.sqlite
+
+# Backup files
+*.bak
+
+# Test coverage
+coverage/
+.nyc_output

@@ -12,91 +12,26 @@
     html,body { height: 100%; font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial; background:#0b1020; color: #fff; }
 
     /* Fullscreen 3D background placeholder & viewer container */
-    .bg-wrap {
-      position: fixed;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 0;
-      background: #0b1020; /* fallback color while viewer loads */
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      overflow:hidden;
-    }
+    .bg-wrap { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; background: #0b1020; /* fallback color while viewer loads */ display:flex; align-items:center; justify-content:center; overflow:hidden; }
     /* when viewer exists it will fill this */
-    .bg-3d {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 0;
-      display:block;
-    }
+    .bg-3d { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; display:block; }
 
     /* light ball that follows the mouse */
-    #cursor-ball {
-      position: fixed;
-      width: 18px;
-      height: 18px;
-      background: rgba(255,255,255,0.95);
-      border-radius: 50%;
-      pointer-events: none;
-      mix-blend-mode: screen;
-      filter: blur(6px) saturate(1.1);
-      z-index: 2;
-      transform: translate(-50%, -50%) scale(1);
-      transition: transform 0.06s linear;
-    }
-
+    #cursor-ball { position: fixed; width: 18px; height: 18px; background: rgba(255,255,255,0.95); border-radius: 50%; pointer-events: none; mix-blend-mode: screen; filter: blur(6px) saturate(1.1); z-index: 2; transform: translate(-50%, -50%) scale(1); transition: transform 0.06s linear; }
     /* small animated pulsing dot (optional extra) */
-    #cursor-ball::after {
-      content: "";
-      display:block;
-      width: 6px; height: 6px; border-radius: 50%;
-      background: rgba(255,255,255,0.95);
-      position: absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-      box-shadow: 0 0 18px rgba(255,255,255,0.12);
-    }
+    #cursor-ball::after { content: ""; display:block; width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.95); position: absolute; left:50%; top:50%; transform:translate(-50%,-50%); box-shadow: 0 0 18px rgba(255,255,255,0.12); }
 
     /* Login card (glass look) */
-    .login-box {
-      position: relative;
-      z-index: 3;
-      width: 360px;
-      max-width: 92vw;
-      margin: 40px;
-      border-radius: 22px;
-      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
-      border: 1px solid rgba(255,255,255,0.06);
-      backdrop-filter: blur(10px) saturate(1.05);
-      padding: 28px;
-      box-shadow: 0 24px 60px rgba(2,6,23,0.75);
-      color: #fff;
-    }
+    .login-box { position: relative; z-index: 3; width: 360px; max-width: 92vw; margin: 40px; border-radius: 22px; background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03)); border: 1px solid rgba(255,255,255,0.06); backdrop-filter: blur(10px) saturate(1.05); padding: 28px; box-shadow: 0 24px 60px rgba(2,6,23,0.75); color: #fff; }
     .login-box h2 { font-size: 1.5rem; margin-bottom: 12px; letter-spacing: 0.02em; }
     .login-box p.lead { color: rgba(255,255,255,0.75); margin-bottom: 18px; font-size: 0.95rem; }
 
     label { display:block; font-size: 0.85rem; color: rgba(255,255,255,0.8); margin-bottom:6px; }
-    input[type="email"], input[type="password"], input[type="text"]{
-      width:100%; padding:12px 14px; border-radius:10px; border: 1px solid rgba(255,255,255,0.06);
-      background: rgba(10,12,15,0.35); color:#fff; outline:none; font-size:0.98rem;
-    }
+    input[type="email"], input[type="password"], input[type="text"]{ width:100%; padding:12px 14px; border-radius:10px; border: 1px solid rgba(255,255,255,0.06); background: rgba(10,12,15,0.35); color:#fff; outline:none; font-size:0.98rem; }
     input::placeholder { color: rgba(255,255,255,0.4); }
 
     .row { display:flex; gap:12px; align-items:center; justify-content:space-between; margin-top:10px; }
-    .login-btn {
-      display:inline-block;
-      padding: 10px 14px;
-      border-radius: 999px;
-      border: 0;
-      cursor: pointer;
-      font-weight:700;
-      background: linear-gradient(135deg,#6b2b5a,#7b3a66);
-      color: #fff;
-      box-shadow: 0 12px 30px rgba(123,58,102,0.15);
-      transition: transform .12s ease;
-    }
+    .login-btn { display:inline-block; padding: 10px 14px; border-radius: 999px; border: 0; cursor: pointer; font-weight:700; background: linear-gradient(135deg,#6b2b5a,#7b3a66); color: #fff; box-shadow: 0 12px 30px rgba(123,58,102,0.15); transition: transform .12s ease; }
     .login-btn:active { transform: translateY(2px); }
 
     .links { display:flex; justify-content:space-between; margin-top:12px; font-size:0.95rem; }
@@ -106,15 +41,8 @@
     #errorMsg { margin-top:8px; color: #ffb3b3; min-height: 18px; font-size:0.9rem; }
 
     /* Signup / forgot modals */
-    .modal-backdrop {
-      position: fixed; inset: 0; background: rgba(3,6,12,0.6); z-index: 20; display:none; align-items:center; justify-content:center;
-    }
-    .modal {
-      width: 420px; max-width: 94vw; border-radius:16px; padding:20px;
-      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
-      border: 1px solid rgba(255,255,255,0.06); backdrop-filter: blur(8px);
-      color:#fff;
-    }
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(3,6,12,0.6); z-index: 20; display:none; align-items:center; justify-content:center; }
+    .modal { width: 420px; max-width: 94vw; border-radius:16px; padding:20px; background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02)); border: 1px solid rgba(255,255,255,0.06); backdrop-filter: blur(8px); color:#fff; }
     .modal h3 { margin-bottom:10px; }
     .modal .row { margin-top:8px; }
     .modal .actions { display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
@@ -123,9 +51,7 @@
     .btn-primary { background: linear-gradient(135deg,#38bdf8,#6366f1); color:#fff; border-radius:10px; padding:8px 12px; border:0; cursor:pointer; }
 
     /* loader while Spline loads */
-    .loader {
-      position: absolute; inset: 0; display:flex; align-items:center; justify-content:center; z-index:1; pointer-events:none;
-    }
+    .loader { position: absolute; inset: 0; display:flex; align-items:center; justify-content:center; z-index:1; pointer-events:none; }
     .spinner { width:40px; height:40px; border-radius:50%; border:4px solid rgba(255,255,255,0.08); border-top-color: rgba(255,255,255,0.22); animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -135,6 +61,12 @@
       .login-box { margin-top: 6vh; }
     }
   </style>
+
+  <!-- SINGLE-FILE API BASE (change this to your Render URL if needed) -->
+  <script>
+    // Put your production backend URL here (Render)
+    const API_BASE = "https://code-explainer-pro.onrender.com";
+  </script>
 </head>
 <body>
 
@@ -220,12 +152,10 @@
     </div>
   </div>
 
+  <!-- ============================
+       SCRIPT BLOCK: viewer (lazy-load spline)
+       ============================ -->
   <script>
-  /*****************************************************************
-   * 1) LAZY LOAD SPLINE VIEWER (improves initial load)
-   *  - We'll inject the viewer script only after user interaction or after 1s.
-   *  - Uses the URL you provided: prod.spline.design/qOo8h6XnBPPB7mtz/scene.splinecode
-   *****************************************************************/
   (function lazyLoadSpline() {
     const SPLINE_URL = "https://prod.spline.design/qOo8h6XnBPPB7mtz/scene.splinecode";
     const viewerContainer = document.getElementById('viewerContainer');
@@ -243,17 +173,11 @@
       s.type = 'module';
       s.src = 'https://unpkg.com/@splinetool/viewer@1.12.5/build/spline-viewer.js';
       s.onload = () => {
-        // create element after script loaded
         const sv = document.createElement('spline-viewer');
         sv.className = 'bg-3d';
         sv.setAttribute('url', SPLINE_URL);
-        // optional: remove spline logo, enable/disable interactions via attributes
         sv.setAttribute('interaction', 'true');
-        // append and hide spinner when viewer emits ready
         viewerContainer.appendChild(sv);
-
-        // if available, use its "loaded" event — viewer doesn't always provide an event,
-        // so we hide loader after a small delay to avoid flicker.
         setTimeout(() => loader.style.display = 'none', 900);
       };
       s.onerror = () => {
@@ -263,7 +187,6 @@
       document.head.appendChild(s);
     }
 
-    // Load after first mousemove or keydown or after 800ms, whichever comes first
     let triggered = false;
     function trigger() { if (!triggered) { triggered = true; createViewer(); removeListeners(); } }
     function removeListeners(){ window.removeEventListener('mousemove', trigger); window.removeEventListener('keydown', trigger); }
@@ -271,18 +194,18 @@
     window.addEventListener('mousemove', trigger, { once: true });
     window.addEventListener('keydown', trigger, { once: true });
 
-    // fallback timer to load viewer if user doesn't interact
     setTimeout(trigger, 800);
   })();
+  </script>
 
-
-  /*****************************************************************
-   * 2) CURSOR BALL — follows mouse smoothly
-   *****************************************************************/
+  <!-- ============================
+       SCRIPT BLOCK: cursor ball
+       ============================ -->
+  <script>
   (function cursorBall() {
     const ball = document.getElementById('cursor-ball');
+    if (!ball) return;
     let lastX = window.innerWidth/2, lastY = window.innerHeight/2;
-    // show ball only when moving mouse (reduces GPU work)
     let visible = false, hideTimer = null;
     document.addEventListener('mousemove', (e) => {
       lastX = e.clientX; lastY = e.clientY;
@@ -296,18 +219,17 @@
       hideTimer = setTimeout(()=>{ visible=false; ball.style.opacity='0.0'; }, 2000);
     }, { passive: true });
 
-    // small parallax following for touch devices (touchmove)
     document.addEventListener('touchmove', (e) => {
       const t = e.touches[0];
       if (t) { ball.style.left = `${t.clientX}px`; ball.style.top = `${t.clientY}px`; }
     }, { passive: true });
   })();
+  </script>
 
-
-  /*****************************************************************
-   * 3) LOGIN + SIGNUP + FORGOT functionality (modal-based)
-   *    - Attempts server calls; falls back to localStorage demo
-   *****************************************************************/
+  <!-- ============================
+       SCRIPT BLOCK: auth (login/signup/forgot)
+       ============================ -->
+  <script>
   (function authForms(){
     const loginForm = document.getElementById('loginForm');
     const emailEl = document.getElementById('email');
@@ -329,6 +251,9 @@
     const forgotSubmit = document.getElementById('forgotSubmit');
     const forgotMsg = document.getElementById('forgotMsg');
 
+    // Defensive checks
+    if (!loginForm) return;
+
     // open/close helpers
     openSignup.addEventListener('click', () => { signupBackdrop.style.display='flex'; signupBackdrop.setAttribute('aria-hidden','false'); });
     signupCancel.addEventListener('click', () => { signupBackdrop.style.display='none'; signupBackdrop.setAttribute('aria-hidden','true'); signupMsg.textContent = ''; });
@@ -339,6 +264,16 @@
     [signupBackdrop, forgotBackdrop].forEach(b => {
       b.addEventListener('click', (ev) => { if (ev.target === b) { b.style.display='none'; b.setAttribute('aria-hidden','true'); } });
     });
+
+    // helper: POST JSON to backend using API_BASE
+    async function postJSON(path, body) {
+      const url = `${API_BASE}${path}`;
+      return fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(body)
+      });
+    }
 
     // LOGIN handler (tries server then fallback)
     loginForm.addEventListener('submit', async (e) => {
@@ -357,11 +292,7 @@
 
       try {
         // try server
-        const res = await fetch('/login', {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ email, password })
-        });
+        const res = await postJSON('/login', { email, password });
 
         if (!res.ok) {
           // server returned an error -> show message from server if available
@@ -406,11 +337,7 @@
 
       signupSubmit.disabled = true; signupSubmit.textContent = 'Creating...';
       try {
-        const res = await fetch('/register', {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ name, email, password })
-        });
+        const res = await postJSON('/register', { name, email, password });
         if (res.ok) {
           signupMsg.style.color = '#bfe3ff';
           signupMsg.textContent = 'Account created. You can now sign in.';
@@ -446,11 +373,7 @@
 
       forgotSubmit.disabled = true; forgotSubmit.textContent = 'Sending...';
       try {
-        const res = await fetch('/forgot-password', {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ email })
-        });
+        const res = await postJSON('/forgot-password', { email });
         if (res.ok) {
           forgotMsg.style.color = '#bfe3ff';
           forgotMsg.textContent = 'If this email exists, a reset link was sent.';
@@ -470,20 +393,16 @@
       }
     });
   })();
+  </script>
 
-
-  /*****************************************************************
-   * 4) OPTIONAL: move a small "white light" inside the Spline scene
-   * We cannot directly control the internals of your Spline scene reliably
-   * from outside, but we can overlay a small dot that appears to move and
-   * even emit pointer events to create interactive feeling.
-   *
-   * The cursor ball is already doing that. If you want a second, larger
-   * decorative dot that gently moves in response to mouse, we can add it:
-   *****************************************************************/
+  <!-- ============================
+       SCRIPT BLOCK: decoration (floating dot)
+       ============================ -->
+  <script>
   (function floatingDecoration(){
-    // optional gentle follower for subtle parallax
     const bgWrap = document.getElementById('bgWrap');
+    if (!bgWrap) return;
+
     const dot = document.createElement('div');
     dot.style.position = 'absolute';
     dot.style.width = '34px';
@@ -500,7 +419,6 @@
 
     let tx = 0, ty = 0;
     document.addEventListener('mousemove', (e) => {
-      // position the dot relative to cursor for parallax feel
       const nx = (e.clientX / window.innerWidth - 0.5) * 30; // -15..15
       const ny = (e.clientY / window.innerHeight - 0.5) * 30;
       tx = 50 + nx; ty = 40 + ny;
@@ -508,7 +426,7 @@
       dot.style.top = `${ty}%`;
     }, { passive: true });
   })();
-
   </script>
+
 </body>
 </html>

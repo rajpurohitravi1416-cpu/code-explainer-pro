@@ -1,0 +1,25 @@
+# ================================
+# FRONTEND .gitignore
+# ================================
+
+# Cache files
+.cache/
+
+# Build outputs
+dist/
+build/
+
+# Service worker cache
+sw.js
+service-worker.js.map
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

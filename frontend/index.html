@@ -106,9 +106,17 @@
 
     .spacer{flex:1}
 
+    /* Explain mode pills + active style */
+    .explain-mode-pill { padding:8px 12px; border-radius:8px; font-weight:600; border:1px solid rgba(255,255,255,0.02); background:transparent; color:var(--muted); cursor:pointer; }
+    .explain-mode-pill.active {
+      background: linear-gradient(90deg, var(--accent1), var(--accent2));
+      color: #04111a;
+      border: 1px solid rgba(75,108,255,0.12);
+      box-shadow: 0 8px 20px rgba(75,108,255,0.08);
+    }
+
     /* -------------------------
        Output & Line-by-Line (fixed)
-       - Use fixed max-height + internal scroll so card never expands
        ------------------------- */
 
     /* Output wrapper — clamp and scroll internally */
@@ -294,6 +302,9 @@
                 </div>
               </div>
 
+              <!-- hidden mode input (keeps backwards compatibility) -->
+              <input type="hidden" id="mode" value="explain" />
+
               <div id="explainModesWrap" class="select-pair" style="gap:8px">
                 <button class="btn btn-accent explain-mode-pill" data-mode="explain" onclick="setExplainMode('explain')">Explain</button>
                 <button class="btn btn-ghost explain-mode-pill" data-mode="debug" onclick="setExplainMode('debug')">Debug</button>
@@ -404,7 +415,11 @@
       const feature = localStorage.getItem('cep_last_feature') || 'explainer';
       const code = document.getElementById('code').value || '';
       const langs = getSelectedLanguage(feature);
-      const mode = document.getElementById('mode')?.value || 'explain';
+
+      // Robust mode selection:
+      const modeEl = document.getElementById('mode');
+      const activeModeBtn = document.querySelector('.explain-mode-pill.active');
+      const mode = modeEl?.value || activeModeBtn?.dataset?.mode || 'explain';
 
       if (!code.trim() && feature !== 'prompt-to-code') return alert('Please paste code (or a prompt for Prompt→Code).');
       if (feature === 'prompt-to-code' && !code.trim()) return alert('Please enter a prompt to generate code.');
@@ -734,6 +749,8 @@
 
     function setExplainMode(mode) {
       document.querySelectorAll('.explain-mode-pill').forEach(p => p.classList.toggle('active', p.dataset.mode === mode));
+      const modeEl = document.getElementById('mode');
+      if (modeEl) modeEl.value = mode;
     }
 
     // responsive clamp
@@ -754,7 +771,9 @@
       const last = localStorage.getItem('cep_last_feature') || 'explainer';
       document.querySelectorAll('.feature-pill').forEach(p => p.classList.toggle('active', p.dataset.feature === last));
       applyFeatureSelection(last);
+      // initialize explain mode UI and hidden input
       setExplainMode('explain');
+
       document.getElementById('logoutBtn').addEventListener('click', logout);
       document.getElementById('fileLabel').addEventListener('click', () => document.getElementById('codeImage').click());
       if (typeof loadHistory === 'function') loadHistory();
