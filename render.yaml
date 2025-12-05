@@ -2,7 +2,7 @@ services:
   - type: web
     name: code-explainer-pro
     env: node
-    region: singapore  # or oregon, frankfurt, etc.
+    region: singapore
     plan: free
     buildCommand: |
       cd backend
@@ -17,7 +17,4 @@ services:
         sync: false
       - key: JWT_SECRET
         generateValue: true
-    disk:
-      name: data
-      mountPath: /opt/render/project/src/backend
-      sizeGB: 1
+# The 'disk:' section has been removed
