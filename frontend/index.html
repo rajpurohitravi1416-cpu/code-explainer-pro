@@ -250,6 +250,7 @@
               <div class="icon" style="background: linear-gradient(90deg, #ff4b6c, #ff904b);">▼</div>
               <div><div class="title">Compressor</div><div class="desc">500 lines → 150 lines</div></div>
             </div>
+
             <div class="feature-pill" data-feature="prompt-to-code" role="tab" tabindex="0" onclick="selectFeature('prompt-to-code')">
               <div class="icon">P</div>
               <div><div class="title">Prompt → Code</div><div class="desc">Natural language → code</div></div>
@@ -404,7 +405,8 @@
        Primary actions — uses local API_BASE (set below in server deploy)
        ------------------------- */
     // default API base (local dev or change to render/your backend)
-    const API_BASE = "http://localhost:3000"; // Change this if deployed
+    const API_BASE = ""; // ✅ FIXED: Empty string for relative paths on Render
+
     async function primaryActionClicked() {
       const feature = localStorage.getItem('cep_last_feature') || 'explainer';
       const code = document.getElementById('code').value || '';
