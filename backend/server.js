@@ -1,4 +1,4 @@
-// backend/server.js - No Auth / Direct Access Version + Compressor Added
+// backend/server.js - Fixed Compressor (Readable Output)
 import express from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
@@ -40,7 +40,7 @@ app.use(
     "/explain", "/scan-code", "/explain-line", "/convert",
     "/optimize", "/prompt-to-code", "/fill-code",
     "/convert-image", "/optimize-image", "/fill-image",
-    "/compress", "/compress-image" // <--- Added Compressor Routes
+    "/compress", "/compress-image"
   ],
   aiLimiter
 );
@@ -89,7 +89,7 @@ async function callOpenRouter(messages, opts = {}) {
   const body = {
     model: opts.model || "gpt-3.5-turbo",
     messages,
-    max_tokens: opts.max_tokens || 1500, // Increased for larger code generation
+    max_tokens: opts.max_tokens || 1500,
     temperature: typeof opts.temperature === "number" ? opts.temperature : 0.3,
   };
 
@@ -109,7 +109,7 @@ async function callOpenRouter(messages, opts = {}) {
   return data?.choices?.[0]?.message?.content || "No explanation generated.";
 }
 
-// ========== API ROUTES (No Auth) ==========
+// ========== API ROUTES ==========
 
 app.post("/explain", async (req, res) => {
   const { code, language = "unknown", mode = "explain" } = req.body;
@@ -119,7 +119,6 @@ app.post("/explain", async (req, res) => {
     const messages = buildExplainMessages({ code, language, mode });
     const explanation = await callOpenRouter(messages);
 
-    // Save to generic history (no specific user email)
     const histories = JSON.parse(fs.readFileSync(HISTORY_FILE));
     histories.unshift({
       id: uuidv4(),
@@ -231,7 +230,7 @@ app.post("/fill-code", async (req, res) => {
   }
 });
 
-// ========== COMPRESSION ROUTES (NEW) ==========
+// ========== COMPRESSION ROUTES (FIXED: READABLE) ==========
 
 app.post("/compress", async (req, res) => {
   const { code, language = "unknown" } = req.body;
@@ -239,17 +238,18 @@ app.post("/compress", async (req, res) => {
 
   try {
     const messages = [
-      { role: "system", content: "You are an expert code minifier and refactorer." },
+      { role: "system", content: "You are an expert code refactorer." },
       { 
         role: "user", 
         content: `Language: ${language}
-        Task: Drastically compress this code to the fewest lines possible (aim for 70% reduction).
+        Task: Aggressively refactor this code to reduce line count (aim for 50-70% reduction) WITHOUT making it unreadable.
+        
         Rules:
-        1. PRESERVE EXACT BEHAVIOR and OUTPUT. Do not break logic.
-        2. Remove all comments and unnecessary whitespace.
-        3. Use advanced idioms (e.g., arrow functions, ternaries, list comprehensions, short-circuiting).
-        4. Combine variable declarations and statements where possible.
-        5. Return ONLY the compressed code. No markdown, no explanations.
+        1. PRESERVE LOGIC EXACTLY.
+        2. DO NOT MINIFY. Keep standard indentation and newlines.
+        3. Remove comments and blank lines.
+        4. Use concise syntax (ternaries, arrow functions, list comprehensions, guard clauses) to shorten logic.
+        5. Return ONLY the code.
         
         Code:
         \`\`\`${language}
@@ -259,7 +259,7 @@ app.post("/compress", async (req, res) => {
     ];
     const compressed = await callOpenRouter(messages, { temperature: 0.2 });
     
-    // Clean up potential markdown wrapper if the AI adds it
+    // Clean up potential markdown wrapper
     const cleanCode = compressed.replace(/^```[a-z]*\n/i, '').replace(/```$/, '');
 
     res.json({ result: cleanCode });
@@ -329,8 +329,10 @@ app.post("/compress-image", upload.single("file"), async (req, res) => {
     if (!text.trim()) return res.status(400).json({ error: "No readable code found" });
     const { language = "unknown" } = req.body;
     
-    const prompt = `Compress this ${language} code aggressively to reduce lines while keeping logic identical. Return only code.\nCode:\n${text}`;
-    const messages = [{ role: "system", content: "You are a code minifier." }, { role: "user", content: prompt }];
+    // FIXED PROMPT: Explicitly ask for readability
+    const prompt = `Refactor this ${language} code to reduce line count by using concise logic (ternaries, arrow functions, etc), but KEEP IT READABLE (maintain indentation and newlines). Return only code.\nCode:\n${text}`;
+    
+    const messages = [{ role: "system", content: "You are a code refactorer." }, { role: "user", content: prompt }];
     
     const compressed = await callOpenRouter(messages);
     res.json({ extractedCode: text.trim(), result: compressed });
@@ -373,12 +375,10 @@ if (fs.existsSync(frontendPath)) {
   console.log("✅ Frontend directory found, serving static files");
   app.use(express.static(frontendPath));
 
-  // Serve the MAIN APP at root
   app.get("/", (req, res) => {
     res.sendFile(path.join(frontendPath, "index.html"));
   });
 
-  // Catch-all redirect to index
   app.get("*", (req, res) => {
     res.sendFile(path.join(frontendPath, "index.html"));
   });
