@@ -1,4 +1,4 @@
-// backend/server.js - No Auth / Direct Access Version
+// backend/server.js - No Auth / Direct Access Version + Compressor Added
 import express from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
@@ -40,6 +40,7 @@ app.use(
     "/explain", "/scan-code", "/explain-line", "/convert",
     "/optimize", "/prompt-to-code", "/fill-code",
     "/convert-image", "/optimize-image", "/fill-image",
+    "/compress", "/compress-image" // <--- Added Compressor Routes
   ],
   aiLimiter
 );
@@ -88,7 +89,7 @@ async function callOpenRouter(messages, opts = {}) {
   const body = {
     model: opts.model || "gpt-3.5-turbo",
     messages,
-    max_tokens: opts.max_tokens || 900,
+    max_tokens: opts.max_tokens || 1500, // Increased for larger code generation
     temperature: typeof opts.temperature === "number" ? opts.temperature : 0.3,
   };
 
@@ -230,6 +231,44 @@ app.post("/fill-code", async (req, res) => {
   }
 });
 
+// ========== COMPRESSION ROUTES (NEW) ==========
+
+app.post("/compress", async (req, res) => {
+  const { code, language = "unknown" } = req.body;
+  if (!code) return res.status(400).json({ error: "Code is required" });
+
+  try {
+    const messages = [
+      { role: "system", content: "You are an expert code minifier and refactorer." },
+      { 
+        role: "user", 
+        content: `Language: ${language}
+        Task: Drastically compress this code to the fewest lines possible (aim for 70% reduction).
+        Rules:
+        1. PRESERVE EXACT BEHAVIOR and OUTPUT. Do not break logic.
+        2. Remove all comments and unnecessary whitespace.
+        3. Use advanced idioms (e.g., arrow functions, ternaries, list comprehensions, short-circuiting).
+        4. Combine variable declarations and statements where possible.
+        5. Return ONLY the compressed code. No markdown, no explanations.
+        
+        Code:
+        \`\`\`${language}
+        ${code}
+        \`\`\`` 
+      },
+    ];
+    const compressed = await callOpenRouter(messages, { temperature: 0.2 });
+    
+    // Clean up potential markdown wrapper if the AI adds it
+    const cleanCode = compressed.replace(/^```[a-z]*\n/i, '').replace(/```$/, '');
+
+    res.json({ result: cleanCode });
+  } catch (err) {
+    console.error("❌ compress error:", err);
+    res.status(500).json({ error: "Compression failed", details: err.message });
+  }
+});
+
 // ========== IMAGE HANDLERS ==========
 async function ocrFileAndDelete(filePath) {
   const { data } = await Tesseract.recognize(filePath, "eng");
@@ -280,6 +319,24 @@ app.post("/optimize-image", upload.single("file"), async (req, res) => {
   } catch (err) {
     console.error("❌ optimize-image error:", err);
     res.status(500).json({ error: "Optimize image failed", details: err.message });
+  }
+});
+
+app.post("/compress-image", upload.single("file"), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "No image uploaded" });
+  try {
+    const text = await ocrFileAndDelete(req.file.path);
+    if (!text.trim()) return res.status(400).json({ error: "No readable code found" });
+    const { language = "unknown" } = req.body;
+    
+    const prompt = `Compress this ${language} code aggressively to reduce lines while keeping logic identical. Return only code.\nCode:\n${text}`;
+    const messages = [{ role: "system", content: "You are a code minifier." }, { role: "user", content: prompt }];
+    
+    const compressed = await callOpenRouter(messages);
+    res.json({ extractedCode: text.trim(), result: compressed });
+  } catch (err) {
+    console.error("❌ compress-image error:", err);
+    res.status(500).json({ error: "Compress image failed", details: err.message });
   }
 });
 

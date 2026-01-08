@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Code Explainer Pro — Glass Hero (Fixed)</title>
+  <title>Code Explainer Pro — Glass Hero</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#0a1623">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Inter:wght@300;400;600;700&family=Fira+Code&display=swap" rel="stylesheet">
@@ -13,6 +13,7 @@
     :root{
       --accent1:#22e3b3; /* mint */
       --accent2:#4b6cff; /* indigo */
+      --accent3:#ff4b6c; /* coral - for compressor */
       --bg-0:#080a10;
       --bg-1:#0b1220;
       --glass-alpha: 0.06;
@@ -183,7 +184,6 @@
   </style>
 </head>
 <body>
-  <!-- Decorative hero shapes (background) -->
   <div class="hero-bg" aria-hidden="true">
     <div class="diagonals" role="presentation">
       <svg viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
@@ -215,7 +215,6 @@
     <div class="dot-grid" aria-hidden="true"></div>
   </div>
 
-  <!-- App content -->
   <div class="app-root">
     <div class="app-root-inner app-root">
       <header>
@@ -228,7 +227,6 @@
       </header>
 
       <div class="layout">
-        <!-- Sidebar -->
         <aside class="card" aria-label="Sidebar">
           <div class="nav-title">Tools</div>
 
@@ -247,7 +245,11 @@
               <div class="icon">O</div>
               <div><div class="title">Optimizer</div><div class="desc">Speed / memory / readability</div></div>
             </div>
-
+            
+            <div class="feature-pill" data-feature="compressor" role="tab" tabindex="0" onclick="selectFeature('compressor')">
+              <div class="icon" style="background: linear-gradient(90deg, #ff4b6c, #ff904b);">▼</div>
+              <div><div class="title">Compressor</div><div class="desc">500 lines → 150 lines</div></div>
+            </div>
             <div class="feature-pill" data-feature="prompt-to-code" role="tab" tabindex="0" onclick="selectFeature('prompt-to-code')">
               <div class="icon">P</div>
               <div><div class="title">Prompt → Code</div><div class="desc">Natural language → code</div></div>
@@ -266,7 +268,6 @@
           </div>
         </aside>
 
-        <!-- Main -->
         <main>
           <section class="card" aria-labelledby="enter-title">
             <h3 id="enter-title">💻 Enter Your Code</h3>
@@ -298,7 +299,6 @@
                 </div>
               </div>
 
-              <!-- hidden mode input (keeps backwards compatibility) -->
               <input type="hidden" id="mode" value="explain" />
 
               <div id="explainModesWrap" class="select-pair" style="gap:8px">
@@ -318,7 +318,6 @@
               <div id="featureHint" class="hint">Use automatic detection for language.</div>
             </div>
 
-            <!-- OUTPUT: full-width card -->
             <div style="margin-top:14px;">
               <div class="card" style="padding:14px;">
                 <div style="display:flex;justify-content:space-between;align-items:center">
@@ -333,7 +332,6 @@
               </div>
             </div>
 
-            <!-- LINE-BY-LINE: now below the output as its own card -->
             <div style="margin-top:16px;">
               <div class="card" style="padding:14px;">
                 <div style="display:flex;justify-content:space-between;align-items:center">
@@ -406,7 +404,7 @@
        Primary actions — uses local API_BASE (set below in server deploy)
        ------------------------- */
     // default API base (local dev or change to render/your backend)
-    const API_BASE = "https://code-explainer-pro.onrender.com";
+    const API_BASE = "http://localhost:3000"; // Change this if deployed
     async function primaryActionClicked() {
       const feature = localStorage.getItem('cep_last_feature') || 'explainer';
       const code = document.getElementById('code').value || '';
@@ -459,6 +457,9 @@
         } else if (feature === 'half-fill') {
           endpoint = `${API_BASE}/fill-code`;
           body = { code, language: detectedSelect || 'unknown' };
+        } else if (feature === 'compressor') {
+          endpoint = `${API_BASE}/compress`;
+          body = { code, language: detectedSelect || 'unknown' };
         } else {
           endpoint = `${API_BASE}/explain`;
           body = { code, language: detectedSelect || 'unknown', mode };
@@ -477,7 +478,9 @@
         const langLabel = (feature === 'converter') ? `${body.from} → ${body.to}` : (detectedSelect || 'unknown');
         setExplanation(`✅ Result — Language: ${langLabel}\n\n${text}`);
 
-        if (feature !== 'prompt-to-code') buildLineList(code);
+        if (feature !== 'prompt-to-code') buildLineList(text); // Build line list from RESULT, not input for compressor
+        else buildLineList(text);
+        
         if (typeof loadHistory === 'function') loadHistory();
       } catch (err) {
         setExplanation('❌ Error: ' + (err.message || err));
@@ -507,6 +510,7 @@
       let endpoint = `${API_BASE}/scan-code`;
       if (feature === 'converter') endpoint = `${API_BASE}/convert-image`;
       else if (feature === 'optimizer') endpoint = `${API_BASE}/optimize-image`;
+      else if (feature === 'compressor') endpoint = `${API_BASE}/compress-image`;
       else if (feature === 'half-fill') endpoint = `${API_BASE}/fill-image`;
       else endpoint = `${API_BASE}/scan-code`;
 
@@ -524,6 +528,7 @@
           buildLineList(data.extractedCode);
         } else if (data.result || data.explanation) {
           setExplanation(`✅ Result — Language: ${langLabel}\n\n${data.result || data.explanation || JSON.stringify(data)}`);
+          buildLineList(data.result);
         } else {
           setExplanation(JSON.stringify(data, null, 2));
         }
@@ -542,7 +547,8 @@
         converter: 'Converted code will appear here...',
         optimizer: 'Optimized code will appear here...',
         'prompt-to-code': 'Generated code will appear here...',
-        'half-fill': 'Filled code will appear here...'
+        'half-fill': 'Filled code will appear here...',
+        compressor: 'Compressed code will appear here...'
       };
       document.getElementById('output').textContent = placeholders[feature] || 'Your explanation will appear here...';
       const linesList = document.getElementById('linesList'); if (linesList) linesList.innerHTML = '';
@@ -695,6 +701,14 @@
           primaryText: 'Fill Code',
           outputText: 'Filled code will appear here...',
           lineText: 'Click a line to see explanation...'
+        },
+        // NEW COMPRESSOR SETTINGS
+        compressor: {
+          inputLabel: 'Paste verbose code to compress',
+          inputPlaceholder: 'Paste your long code here...',
+          primaryText: 'Compress Code',
+          outputText: 'Compressed code will appear here...',
+          lineText: 'Click a line to view logic...'
         }
       };
 
@@ -716,6 +730,11 @@
       } else if (feature === 'optimizer') {
         imageActionBtn.textContent = '🖼️ Optimize Image';
         imageActionBtn.dataset.action = 'optimize-image';
+      } else if (feature === 'compressor') {
+        // NEW COMPRESSOR UI STATE
+        imageActionBtn.textContent = '📉 Compress Image';
+        imageActionBtn.dataset.action = 'compress-image';
+        featureHint.textContent = 'Aggressively reduces line count while keeping output identical.';
       } else if (feature === 'prompt-to-code') {
         fileLabel.style.display = 'none';
         imageActionBtn.style.display = 'none';
@@ -732,7 +751,8 @@
         'Converted code will appear here...',
         'Optimized code will appear here...',
         'Generated code will appear here...',
-        'Filled code will appear here...'
+        'Filled code will appear here...',
+        'Compressed code will appear here...'
       ];
       if (!currentOut || defaults.includes(currentOut.trim())) {
         outEl.textContent = p.outputText;
